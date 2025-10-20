@@ -1,7 +1,8 @@
 import { Footer } from "@marketing/shared/components/Footer";
-import { NavBar } from "@marketing/shared/components/NavBar";
+import { ECommerceNavbar } from "@marketing/shared/components/ECommerceNavbar";
 import { config } from "@repo/config";
 import { SessionProvider } from "@saas/auth/components/SessionProvider";
+import { CartProvider } from "@saas/cart/CartContext";
 import { Document } from "@shared/components/Document";
 import { I18nProvider as FumadocsI18nProvider } from "fumadocs-ui/i18n";
 import { RootProvider as FumadocsRootProvider } from "fumadocs-ui/provider";
@@ -43,9 +44,11 @@ export default async function MarketingLayout({
 				>
 					<NextIntlClientProvider locale={locale} messages={messages}>
 						<SessionProvider>
-							<NavBar />
-							<main className="min-h-screen">{children}</main>
-							<Footer />
+							<CartProvider>
+								<ECommerceNavbar />
+								<main className="min-h-screen">{children}</main>
+								<Footer />
+							</CartProvider>
 						</SessionProvider>
 					</NextIntlClientProvider>
 				</FumadocsRootProvider>

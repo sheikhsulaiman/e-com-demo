@@ -5,329 +5,354 @@ import { validator } from "hono-openapi/zod";
 import { z } from "zod";
 
 const addToCartSchema = z.object({
-  productId: z.string(),
-  quantity: z.number().int().positive().default(1),
+	productId: z.string(),
+	quantity: z.number().int().positive().default(1),
 });
 
 const updateCartItemSchema = z.object({
-  quantity: z.number().int().min(0),
+	quantity: z.number().int().min(0),
 });
 
 export const cartRouter = new Hono()
-  .basePath("/cart")
-  
-  // Get cart (for authenticated users)
-  .get("/",
-    describeRoute({
-      summary: "Get user cart",
-      tags: ["Cart"],
-    }),
-    async (c) => {
-      // In a real app, you'd get userId from auth middleware
-      const userId = c.req.header("x-user-id"); // Placeholder for auth
-      
-      if (!userId) {
-        return c.json({ error: "Authentication required" }, 401);
-      }
+	.basePath("/cart")
 
-      const cart = await db.cart.findUnique({
-        where: { userId },
-        include: {
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  price: true,
-                  images: true,
-                  status: true,
-                  quantity: true,
-                },
-              },
-            },
-          },
-        },
-      });
+	// Get cart (for authenticated users)
+	.get(
+		"/",
+		describeRoute({
+			summary: "Get user cart",
+			tags: ["Cart"],
+		}),
+		async (c) => {
+			// In a real app, you'd get userId from auth middleware
+			const userId = c.req.header("x-user-id"); // Placeholder for auth
 
-      if (!cart) {
-        // Create empty cart if it doesn't exist
-        const newCart = await db.cart.create({
-          data: { userId },
-          include: {
-            items: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                    price: true,
-                    images: true,
-                    status: true,
-                    quantity: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-        return c.json(newCart);
-      }
+			if (!userId) {
+				return c.json({ error: "Authentication required" }, 401);
+			}
 
-      return c.json(cart);
-    }
-  )
+			const cart = await db.cart.findUnique({
+				where: { userId },
+				include: {
+					items: {
+						include: {
+							product: {
+								select: {
+									id: true,
+									name: true,
+									slug: true,
+									price: true,
+									images: true,
+									status: true,
+									quantity: true,
+								},
+							},
+						},
+					},
+				},
+			});
 
-  // Get cart by session (for guest users)
-  .get("/session/:sessionId",
-    describeRoute({
-      summary: "Get guest cart by session",
-      tags: ["Cart"],
-    }),
-    async (c) => {
-      const sessionId = c.req.param("sessionId");
+			if (!cart) {
+				// Create empty cart if it doesn't exist
+				const newCart = await db.cart.create({
+					data: { userId },
+					include: {
+						items: {
+							include: {
+								product: {
+									select: {
+										id: true,
+										name: true,
+										slug: true,
+										price: true,
+										images: true,
+										status: true,
+										quantity: true,
+									},
+								},
+							},
+						},
+					},
+				});
+				return c.json(newCart);
+			}
 
-      const cart = await db.cart.findUnique({
-        where: { sessionId },
-        include: {
-          items: {
-            include: {
-              product: {
-                select: {
-                  id: true,
-                  name: true,
-                  slug: true,
-                  price: true,
-                  images: true,
-                  status: true,
-                  quantity: true,
-                },
-              },
-            },
-          },
-        },
-      });
+			return c.json(cart);
+		},
+	)
 
-      if (!cart) {
-        const newCart = await db.cart.create({
-          data: { sessionId },
-          include: {
-            items: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    slug: true,
-                    price: true,
-                    images: true,
-                    status: true,
-                    quantity: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-        return c.json(newCart);
-      }
+	// Get cart by session (for guest users)
+	.get(
+		"/session/:sessionId",
+		describeRoute({
+			summary: "Get guest cart by session",
+			tags: ["Cart"],
+		}),
+		async (c) => {
+			const sessionId = c.req.param("sessionId");
 
-      return c.json(cart);
-    }
-  )
+			const cart = await db.cart.findUnique({
+				where: { sessionId },
+				include: {
+					items: {
+						include: {
+							product: {
+								select: {
+									id: true,
+									name: true,
+									slug: true,
+									price: true,
+									images: true,
+									status: true,
+									quantity: true,
+								},
+							},
+						},
+					},
+				},
+			});
 
-  // Add item to cart
-  .post("/add",
-    validator("json", addToCartSchema),
-    describeRoute({
-      summary: "Add item to cart",
-      tags: ["Cart"],
-    }),
-    async (c) => {
-      const { productId, quantity } = c.req.valid("json");
-      const userId = c.req.header("x-user-id");
-      const sessionId = c.req.header("x-session-id");
+			if (!cart) {
+				const newCart = await db.cart.create({
+					data: { sessionId },
+					include: {
+						items: {
+							include: {
+								product: {
+									select: {
+										id: true,
+										name: true,
+										slug: true,
+										price: true,
+										images: true,
+										status: true,
+										quantity: true,
+									},
+								},
+							},
+						},
+					},
+				});
+				return c.json(newCart);
+			}
 
-      if (!userId && !sessionId) {
-        return c.json({ error: "User ID or Session ID required" }, 400);
-      }
+			return c.json(cart);
+		},
+	)
 
-      try {
-        // Get or create cart
-        let cart = await db.cart.findUnique({
-          where: userId ? { userId } : { sessionId },
-        });
+	// Add item to cart
+	.post(
+		"/add",
+		validator("json", addToCartSchema),
+		describeRoute({
+			summary: "Add item to cart",
+			tags: ["Cart"],
+		}),
+		async (c) => {
+			const { productId, quantity } = c.req.valid("json");
+			const userId = c.req.header("x-user-id");
+			const sessionId = c.req.header("x-session-id");
 
-        if (!cart) {
-          cart = await db.cart.create({
-            data: userId ? { userId } : { sessionId },
-          });
-        }
+			if (!userId && !sessionId) {
+				return c.json({ error: "User ID or Session ID required" }, 400);
+			}
 
-        // Check if product exists and is available
-        const product = await db.product.findUnique({
-          where: { id: productId },
-        });
+			try {
+				// Get or create cart
+				let cart = await db.cart.findUnique({
+					where: userId ? { userId } : { sessionId },
+				});
 
-        if (!product) {
-          return c.json({ error: "Product not found" }, 404);
-        }
+				if (!cart) {
+					cart = await db.cart.create({
+						data: userId ? { userId } : { sessionId },
+					});
+				}
 
-        if (product.status === "INACTIVE" || product.status === "OUT_OF_STOCK") {
-          return c.json({ error: "Product is not available" }, 400);
-        }
+				// Check if product exists and is available
+				const product = await db.product.findUnique({
+					where: { id: productId },
+				});
 
-        // Check stock availability
-        if (product.trackQuantity && product.quantity < quantity) {
-          return c.json({ 
-            error: `Only ${product.quantity} items available in stock` 
-          }, 400);
-        }
+				if (!product) {
+					return c.json({ error: "Product not found" }, 404);
+				}
 
-        // Check if item already exists in cart
-        const existingCartItem = await db.cartItem.findUnique({
-          where: {
-            cartId_productId: {
-              cartId: cart.id,
-              productId,
-            },
-          },
-        });
+				if (
+					product.status === "INACTIVE" ||
+					product.status === "OUT_OF_STOCK"
+				) {
+					return c.json({ error: "Product is not available" }, 400);
+				}
 
-        let cartItem;
-        if (existingCartItem) {
-          const newQuantity = existingCartItem.quantity + quantity;
-          
-          // Check stock for new total quantity
-          if (product.trackQuantity && product.quantity < newQuantity) {
-            return c.json({ 
-              error: `Only ${product.quantity} items available in stock` 
-            }, 400);
-          }
+				// Check stock availability
+				if (product.trackQuantity && product.quantity < quantity) {
+					return c.json(
+						{
+							error: `Only ${product.quantity} items available in stock`,
+						},
+						400,
+					);
+				}
 
-          cartItem = await db.cartItem.update({
-            where: { id: existingCartItem.id },
-            data: { quantity: newQuantity },
-            include: { product: true },
-          });
-        } else {
-          cartItem = await db.cartItem.create({
-            data: {
-              cartId: cart.id,
-              productId,
-              quantity,
-              price: product.price,
-            },
-            include: { product: true },
-          });
-        }
+				// Check if item already exists in cart
+				const existingCartItem = await db.cartItem.findUnique({
+					where: {
+						cartId_productId: {
+							cartId: cart.id,
+							productId,
+						},
+					},
+				});
 
-        return c.json(cartItem, 201);
-      } catch (error) {
-        console.error("Error adding to cart:", error);
-        return c.json({ error: "Failed to add item to cart" }, 500);
-      }
-    }
-  )
+				// biome-ignore lint/suspicious/noImplicitAnyLet: <explanation>
+				let cartItem;
+				if (existingCartItem) {
+					const newQuantity = existingCartItem.quantity + quantity;
 
-  // Update cart item quantity
-  .put("/item/:itemId",
-    validator("json", updateCartItemSchema),
-    describeRoute({
-      summary: "Update cart item quantity",
-      tags: ["Cart"],
-    }),
-    async (c) => {
-      const itemId = c.req.param("itemId");
-      const { quantity } = c.req.valid("json");
+					// Check stock for new total quantity
+					if (
+						product.trackQuantity &&
+						product.quantity < newQuantity
+					) {
+						return c.json(
+							{
+								error: `Only ${product.quantity} items available in stock`,
+							},
+							400,
+						);
+					}
 
-      try {
-        if (quantity === 0) {
-          // Remove item if quantity is 0
-          await db.cartItem.delete({ where: { id: itemId } });
-          return c.json({ message: "Item removed from cart" });
-        }
+					cartItem = await db.cartItem.update({
+						where: { id: existingCartItem.id },
+						data: { quantity: newQuantity },
+						include: { product: true },
+					});
+				} else {
+					cartItem = await db.cartItem.create({
+						data: {
+							cartId: cart.id,
+							productId,
+							quantity,
+							price: product.price,
+						},
+						include: { product: true },
+					});
+				}
 
-        // Check stock availability
-        const cartItem = await db.cartItem.findUnique({
-          where: { id: itemId },
-          include: { product: true },
-        });
+				return c.json(cartItem, 201);
+			} catch (error) {
+				console.error("Error adding to cart:", error);
+				return c.json({ error: "Failed to add item to cart" }, 500);
+			}
+		},
+	)
 
-        if (!cartItem) {
-          return c.json({ error: "Cart item not found" }, 404);
-        }
+	// Update cart item quantity
+	.put(
+		"/item/:itemId",
+		validator("json", updateCartItemSchema),
+		describeRoute({
+			summary: "Update cart item quantity",
+			tags: ["Cart"],
+		}),
+		async (c) => {
+			const itemId = c.req.param("itemId");
+			const { quantity } = c.req.valid("json");
 
-        if (cartItem.product.trackQuantity && cartItem.product.quantity < quantity) {
-          return c.json({ 
-            error: `Only ${cartItem.product.quantity} items available in stock` 
-          }, 400);
-        }
+			try {
+				if (quantity === 0) {
+					// Remove item if quantity is 0
+					await db.cartItem.delete({ where: { id: itemId } });
+					return c.json({ message: "Item removed from cart" });
+				}
 
-        const updatedItem = await db.cartItem.update({
-          where: { id: itemId },
-          data: { quantity },
-          include: { product: true },
-        });
+				// Check stock availability
+				const cartItem = await db.cartItem.findUnique({
+					where: { id: itemId },
+					include: { product: true },
+				});
 
-        return c.json(updatedItem);
-      } catch (error) {
-        console.error("Error updating cart item:", error);
-        return c.json({ error: "Failed to update cart item" }, 500);
-      }
-    }
-  )
+				if (!cartItem) {
+					return c.json({ error: "Cart item not found" }, 404);
+				}
 
-  // Remove item from cart
-  .delete("/item/:itemId",
-    describeRoute({
-      summary: "Remove item from cart",
-      tags: ["Cart"],
-    }),
-    async (c) => {
-      const itemId = c.req.param("itemId");
+				if (
+					cartItem.product.trackQuantity &&
+					cartItem.product.quantity < quantity
+				) {
+					return c.json(
+						{
+							error: `Only ${cartItem.product.quantity} items available in stock`,
+						},
+						400,
+					);
+				}
 
-      try {
-        await db.cartItem.delete({ where: { id: itemId } });
-        return c.json({ message: "Item removed from cart" });
-      } catch (error) {
-        console.error("Error removing cart item:", error);
-        return c.json({ error: "Failed to remove cart item" }, 500);
-      }
-    }
-  )
+				const updatedItem = await db.cartItem.update({
+					where: { id: itemId },
+					data: { quantity },
+					include: { product: true },
+				});
 
-  // Clear cart
-  .delete("/clear",
-    describeRoute({
-      summary: "Clear cart",
-      tags: ["Cart"],
-    }),
-    async (c) => {
-      const userId = c.req.header("x-user-id");
-      const sessionId = c.req.header("x-session-id");
+				return c.json(updatedItem);
+			} catch (error) {
+				console.error("Error updating cart item:", error);
+				return c.json({ error: "Failed to update cart item" }, 500);
+			}
+		},
+	)
 
-      if (!userId && !sessionId) {
-        return c.json({ error: "User ID or Session ID required" }, 400);
-      }
+	// Remove item from cart
+	.delete(
+		"/item/:itemId",
+		describeRoute({
+			summary: "Remove item from cart",
+			tags: ["Cart"],
+		}),
+		async (c) => {
+			const itemId = c.req.param("itemId");
 
-      try {
-        const cart = await db.cart.findUnique({
-          where: userId ? { userId } : { sessionId },
-        });
+			try {
+				await db.cartItem.delete({ where: { id: itemId } });
+				return c.json({ message: "Item removed from cart" });
+			} catch (error) {
+				console.error("Error removing cart item:", error);
+				return c.json({ error: "Failed to remove cart item" }, 500);
+			}
+		},
+	)
 
-        if (cart) {
-          await db.cartItem.deleteMany({
-            where: { cartId: cart.id },
-          });
-        }
+	// Clear cart
+	.delete(
+		"/clear",
+		describeRoute({
+			summary: "Clear cart",
+			tags: ["Cart"],
+		}),
+		async (c) => {
+			const userId = c.req.header("x-user-id");
+			const sessionId = c.req.header("x-session-id");
 
-        return c.json({ message: "Cart cleared successfully" });
-      } catch (error) {
-        console.error("Error clearing cart:", error);
-        return c.json({ error: "Failed to clear cart" }, 500);
-      }
-    }
-  );
+			if (!userId && !sessionId) {
+				return c.json({ error: "User ID or Session ID required" }, 400);
+			}
+
+			try {
+				const cart = await db.cart.findUnique({
+					where: userId ? { userId } : { sessionId },
+				});
+
+				if (cart) {
+					await db.cartItem.deleteMany({
+						where: { cartId: cart.id },
+					});
+				}
+
+				return c.json({ message: "Cart cleared successfully" });
+			} catch (error) {
+				console.error("Error clearing cart:", error);
+				return c.json({ error: "Failed to clear cart" }, 500);
+			}
+		},
+	);
