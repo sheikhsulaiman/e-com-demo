@@ -134,7 +134,7 @@ export default function CategoriesPage() {
               <h2 className="text-2xl font-bold text-gray-900">
                 Featured Categories
               </h2>
-              <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+              <Badge status="secondary" className="bg-blue-100 text-blue-800">
                 Popular
               </Badge>
             </div>

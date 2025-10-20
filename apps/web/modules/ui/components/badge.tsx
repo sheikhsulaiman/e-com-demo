@@ -21,6 +21,7 @@ export const badge = cva(
 				info: ["bg-primary/10", "text-primary"],
 				warning: ["bg-amber-500/10", "text-amber-500"],
 				error: ["bg-rose-500/10", "text-rose-500"],
+				secondary: ["bg-gray-100", "text-gray-700"],
 			},
 		},
 		defaultVariants: {
