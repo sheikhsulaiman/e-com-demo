@@ -16,11 +16,15 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 
 const navigation = [
-	{ name: "Dashboard", href: "/app/admin", icon: Home },
-	{ name: "Products", href: "/app/admin/products", icon: Package },
-	{ name: "Inventory", href: "/app/admin/inventory", icon: Warehouse },
-	{ name: "Orders", href: "/app/admin/orders", icon: ShoppingCart },
-	{ name: "Categories", href: "/app/admin/categories", icon: FolderTree },
+	{ name: "Dashboard", href: "/app/store-admin", icon: Home },
+	{ name: "Products", href: "/app/store-admin/products", icon: Package },
+	{ name: "Inventory", href: "/app/store-admin/inventory", icon: Warehouse },
+	{ name: "Orders", href: "/app/store-admin/orders", icon: ShoppingCart },
+	{
+		name: "Categories",
+		href: "/app/store-admin/categories",
+		icon: FolderTree,
+	},
 ];
 
 export default function AdminLayout({

@@ -68,7 +68,7 @@ export function WhyChooseUs() {
             return (
               <Card key={index} className="hover:shadow-lg transition-shadow duration-300">
                 <CardContent className="p-8 text-center">
-                  <div className={`w-16 h-16 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center`}>
+                  <div className={"w-16 h-16 mx-auto mb-6 rounded-full bg-gray-100 flex items-center justify-center"}>
                     <IconComponent className={`h-8 w-8 ${feature.color}`} />
                   </div>
                   <h3 className="text-xl font-semibold mb-4">

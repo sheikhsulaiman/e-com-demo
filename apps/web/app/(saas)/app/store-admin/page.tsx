@@ -184,7 +184,7 @@ export default function AdminDashboard() {
 					<CardHeader className="flex flex-row items-center justify-between">
 						<CardTitle>Recent Orders</CardTitle>
 						<Link
-							href="/app/admin/orders"
+							href="/app/store-admin/orders"
 							className="text-sm text-primary hover:underline"
 						>
 							View all
@@ -231,7 +231,7 @@ export default function AdminDashboard() {
 					<CardHeader className="flex flex-row items-center justify-between">
 						<CardTitle>Low Stock Products</CardTitle>
 						<Link
-							href="/app/admin/products"
+							href="/app/store-admin/products"
 							className="text-sm text-primary hover:underline"
 						>
 							View all
@@ -275,7 +275,7 @@ export default function AdminDashboard() {
 				<CardContent>
 					<div className="grid gap-4 md:grid-cols-3">
 						<Link
-							href="/app/admin/products/new"
+							href="/app/store-admin/products/new"
 							className="flex items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
 						>
 							<div className="text-center space-y-2">
@@ -288,7 +288,7 @@ export default function AdminDashboard() {
 						</Link>
 
 						<Link
-							href="/app/admin/orders"
+							href="/app/store-admin/orders"
 							className="flex items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
 						>
 							<div className="text-center space-y-2">
@@ -301,7 +301,7 @@ export default function AdminDashboard() {
 						</Link>
 
 						<Link
-							href="/app/admin/categories"
+							href="/app/store-admin/categories"
 							className="flex items-center justify-center p-6 border-2 border-dashed border-muted-foreground/25 rounded-lg hover:border-primary hover:bg-primary/5 transition-colors"
 						>
 							<div className="text-center space-y-2">
