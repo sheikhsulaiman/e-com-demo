@@ -1,0 +1,405 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+generator zod {
+  provider         = "zod-prisma-types"
+  output           = "../src/zod"
+  createInputTypes = false
+  addIncludeType   = false
+  addSelectType    = false
+}
+
+generator json {
+  provider = "prisma-json-types-generator"
+}
+
+model User {
+  id                 String       @id
+  name               String
+  email              String
+  emailVerified      Boolean
+  image              String?
+  createdAt          DateTime
+  updatedAt          DateTime
+  username           String?
+  role               String?
+  banned             Boolean?
+  banReason          String?
+  banExpires         DateTime?
+  onboardingComplete Boolean      @default(false)
+  paymentsCustomerId String?
+  locale             String?
+  sessions           Session[]
+  accounts           Account[]
+  passkeys           Passkey[]
+  invitations        Invitation[]
+  purchases          Purchase[]
+  memberships        Member[]
+  aiChats            AiChat[]
+  
+  // E-commerce relations
+  cart               Cart?
+  orders             Order[]
+
+  @@unique([email])
+  @@unique([username])
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  impersonatedBy String?
+
+  activeOrganizationId String?
+
+  token     String
+  createdAt DateTime
+  updatedAt DateTime
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id           String    @id
+  accountId    String
+  providerId   String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken  String? @db.Text
+  refreshToken String? @db.Text
+  idToken      String? @db.Text
+  expiresAt    DateTime?
+  password     String?
+
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String   @db.Text
+  expiresAt  DateTime
+
+  createdAt DateTime?
+  updatedAt DateTime?
+
+  @@map("verification")
+}
+
+model Passkey {
+  id           String    @id
+  name         String?
+  publicKey    String
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  credentialID String
+  counter      Int
+  deviceType   String
+  backedUp     Boolean
+  transports   String?
+  createdAt    DateTime?
+
+  @@map("passkey")
+}
+
+model Organization {
+  id                 String       @id
+  name               String
+  slug               String?
+  logo               String?
+  createdAt          DateTime
+  metadata           String?
+  paymentsCustomerId String?
+  members            Member[]
+  invitations        Invitation[]
+  purchases          Purchase[]
+  aiChats            AiChat[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  createdAt      DateTime
+
+  @@unique([userId, organizationId])
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
+}
+
+enum PurchaseType {
+  SUBSCRIPTION
+  ONE_TIME
+}
+
+model Purchase {
+  id             String        @id @default(cuid())
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organizationId String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId         String?
+  type           PurchaseType
+  customerId     String
+  subscriptionId String?       @unique
+  productId      String
+  status         String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@index([subscriptionId])
+}
+
+model AiChat {
+  id             String        @id @default(cuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String?
+  /// [AIChatMessages]
+  messages       Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+// E-commerce Models
+
+model Category {
+  id          String     @id @default(cuid())
+  name        String
+  slug        String     @unique
+  description String?
+  image       String?
+  parentId    String?
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+  isActive    Boolean    @default(true)
+  sortOrder   Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@map("category")
+}
+
+enum ProductStatus {
+  DRAFT
+  ACTIVE
+  INACTIVE
+  OUT_OF_STOCK
+}
+
+model Product {
+  id            String        @id @default(cuid())
+  name          String
+  slug          String        @unique
+  description   String?
+  shortDescription String?
+  price         Decimal       @db.Decimal(10, 2)
+  comparePrice  Decimal?      @db.Decimal(10, 2)
+  costPrice     Decimal?      @db.Decimal(10, 2)
+  sku           String?       @unique
+  barcode       String?
+  trackQuantity Boolean       @default(true)
+  quantity      Int           @default(0)
+  lowStockAlert Int           @default(5)
+  weight        Decimal?      @db.Decimal(8, 3)
+  dimensions    String?       // JSON string for length, width, height
+  status        ProductStatus @default(DRAFT)
+  featured      Boolean       @default(false)
+  images        String[]      // Array of image URLs
+  categoryId    String?
+  category      Category?     @relation(fields: [categoryId], references: [id])
+  /// [ProductMetadata]
+  metadata      Json?         // Additional product data like variants, attributes
+  seoTitle      String?
+  seoDescription String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  
+  // Relations
+  cartItems     CartItem[]
+  orderItems    OrderItem[]
+  stockMovements StockMovement[]
+
+  @@map("product")
+}
+
+model Cart {
+  id        String     @id @default(cuid())
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId String?    // For guest users
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([userId])
+  @@unique([sessionId])
+  @@map("cart")
+}
+
+model CartItem {
+  id        String   @id @default(cuid())
+  cartId    String
+  cart      Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2) // Price at time of adding to cart
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([cartId, productId])
+  @@map("cart_item")
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+model Order {
+  id              String        @id @default(cuid())
+  orderNumber     String        @unique
+  userId          String?
+  user            User?         @relation(fields: [userId], references: [id])
+  status          OrderStatus   @default(PENDING)
+  paymentStatus   PaymentStatus @default(PENDING)
+  
+  // Customer Info
+  customerEmail   String
+  customerPhone   String?
+  
+  // Billing Address
+  billingName     String
+  billingEmail    String
+  billingPhone    String?
+  billingAddress1 String
+  billingAddress2 String?
+  billingCity     String
+  billingState    String?
+  billingZip      String
+  billingCountry  String
+  
+  // Shipping Address
+  shippingName     String
+  shippingEmail    String?
+  shippingPhone    String?
+  shippingAddress1 String
+  shippingAddress2 String?
+  shippingCity     String
+  shippingState    String?
+  shippingZip      String
+  shippingCountry  String
+  
+  // Order Totals
+  subtotal        Decimal @db.Decimal(10, 2)
+  taxAmount       Decimal @db.Decimal(10, 2) @default(0)
+  shippingAmount  Decimal @db.Decimal(10, 2) @default(0)
+  discountAmount  Decimal @db.Decimal(10, 2) @default(0)
+  totalAmount     Decimal @db.Decimal(10, 2)
+  
+  // Payment Info
+  stripePaymentIntentId String?
+  stripeSessionId       String?
+  
+  // Order Items
+  items           OrderItem[]
+  
+  // Tracking
+  trackingNumber  String?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  
+  // Timestamps
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("order")
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2) // Price at time of order
+  total     Decimal  @db.Decimal(10, 2) // quantity * price
+  createdAt DateTime @default(now())
+
+  @@map("order_item")
+}
+
+enum StockMovementType {
+  IN          // Stock added (purchase, return, adjustment)
+  OUT         // Stock removed (sale, loss, adjustment)
+  ADJUSTMENT  // Manual stock adjustment
+}
+
+model StockMovement {
+  id          String            @id @default(cuid())
+  productId   String
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type        StockMovementType
+  quantity    Int               // Positive for IN, negative for OUT
+  reason      String?           // Reason for the movement
+  reference   String?           // Reference to order, purchase, etc.
+  notes       String?
+  createdBy   String?           // User who made the change
+  createdAt   DateTime          @default(now())
+
+  @@map("stock_movement")
+}
